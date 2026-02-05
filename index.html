@@ -1,12 +1,103 @@
-<!doctype html>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dyslexia Reading Simulation</title>
-  </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div class="container-fluid">
+      <nav style="justify-content: center;">
+        <ul>
+          <li><strong>AlfonsoV App</strong></li>
+        </ul>
+      </nav>
+    </div>
+    <main class="container-fluid" id="app">
+      <div class="grid">
+          <div>
+            <div>
+              <label for="embeddedLink">Embedded Sign-In Link:</label>
+            </div>
+            <input
+              name="embeddedLink"
+              id="embeddedLink"
+              placeholder="https://embedded.workbright.com/sign_in_with_token?token="
+              ref="iframeLink"
+              v-on:keyup.enter="onEnter"
+              :aria-invalid="invalidInput"
+              />
+            <button @click="btnSubmit" :aria-busy="btnBusy" aria-label="Please wait…" style="background-color: rgb(135, 39, 68); border-color: rgb(135, 39, 68);">Submit</button>
+          </article>
+          </div>
+
+          <component v-if="placeholder.length && !loading">
+            <p style="margin: 0;">iFrame Preview:</p>
+            <article style="margin: 0;">
+              <iframe
+                class="embedded-iframe"
+                ref="iframeEl"
+                width="100%"
+                height="1200"
+                frameBorder="0"
+                allow="geolocation *; camera *"
+                :src="placeholder"
+                title="embedded-demo"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation"></iframe>
+            </article>
+            <article v-if="loading" aria-busy="true"></article>
+          </component>
+
+      </div>
+    </main>
   </body>
 </html>
+
+<script>
+  const { createApp } = Vue
+
+  createApp({
+    data() {
+      return {
+        placeholder: '',
+        loading: false,
+        btnBusy: false,
+        invalidInput: null,
+      }
+    },
+    methods: {
+      handleSubmit() {
+        if (!this.$refs.iframeLink.value.length) {
+          this.invalidInput = true
+        } else {
+          this.invalidInput = null
+        }
+
+        this.loading = true
+        this.btnBusy = true
+
+        this.placeholder = this.$refs.iframeLink.value
+        setTimeout(() => {
+          this.loading = false
+          this.btnBusy = false
+        }, 1000)
+      },
+
+      btnSubmit() {
+        this.handleSubmit()
+      },
+
+      onEnter() {
+        this.handleSubmit()
+     },
+
+     mounted() {
+      if (getEventListeners(window) && Object.entries(getEventListeners(window)).length == 0)
+        window.addEventListener('message', (event) => {
+          console.log(event.data)
+        })
+      }
+
+    },
+
+
+
+  }).mount('#app')
+</script>
