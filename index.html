@@ -1,5 +1,17 @@
 <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  .embedded-iframe {
+    min-height: 400px;
+    height: 70vh;
+  }
+  @media (max-width: 768px) {
+    .container-fluid {
+      padding: 0 1rem;
+    }
+  }
+</style>
 
 <html lang="en">
   <body>
@@ -28,14 +40,13 @@
           </article>
           </div>
 
-          <component v-if="placeholder.length && !loading">
+          <component>
             <p style="margin: 0;">iFrame Preview:</p>
             <article style="margin: 0;">
               <iframe
                 class="embedded-iframe"
                 ref="iframeEl"
                 width="100%"
-                height="1200"
                 frameBorder="0"
                 allow="geolocation *; camera *"
                 :src="placeholder"
@@ -56,7 +67,7 @@
   createApp({
     data() {
       return {
-        placeholder: '',
+        placeholder: 'https://checkr.workbright.com/',
         loading: false,
         btnBusy: false,
         invalidInput: null,
