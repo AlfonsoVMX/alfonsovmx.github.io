@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>CHIPS test — Site B</title>
+  <style>
+    body {
+      font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding: 16px;
+    }
+
+    pre {
+      background: #f4f4f4;
+      padding: 12px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+    }
+
+    .verdict {
+      font-weight: bold;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .good {
+      background: #d8f5d8;
+    }
+
+    .bad {
+      background: #f9d8d8;
+    }
+
+    .warn {
+      background: #fdf0cd;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>CHIPS test — Site B (the embedded third party)</h2>
+  <div id="verdict" class="verdict"></div>
+  <pre id="out"></pre>
+  <button id="reload">Reload this frame</button>
+
+  <script>
+    // Set via document.cookie rather than a Set-Cookie header, so this works on
+    // any static host. Partitioned requires Secure, so the page must be HTTPS.
+    var PARTITIONED = "chips_partitioned";
+    var PLAIN = "chips_plain";
+
+    function readCookies() {
+      var jar = {};
+      document.cookie.split(";").forEach(function (pair) {
+        var trimmed = pair.trim();
+        if (!trimmed) return;
+        var i = trimmed.indexOf("=");
+        jar[trimmed.slice(0, i)] = trimmed.slice(i + 1);
+      });
+      return jar;
+    }
+
+    // What survived from a previous load. This is the number that matters --
+    // writing a cookie can appear to succeed even when the browser discards it.
+    var before = readCookies();
+
+    document.cookie = PARTITIONED + "=1; SameSite=None; Secure; Partitioned; path=/; max-age=3600";
+    document.cookie = PLAIN + "=1; SameSite=None; Secure; path=/; max-age=3600";
+
+    var after = readCookies();
+    var inIframe = window.top !== window.self;
+
+    function state(jar, name) { return jar[name] ? "PRESENT" : "absent"; }
+
+    document.getElementById("out").textContent = [
+      "host:           " + location.host,
+      "in iframe:      " + inIframe,
+      "secure context: " + window.isSecureContext,
+      "",
+      "PERSISTED from a previous load  <-- the meaningful result",
+      "  " + PARTITIONED + ": " + state(before, PARTITIONED),
+      "  " + PLAIN + ":       " + state(before, PLAIN),
+      "",
+      "Readable immediately after writing this load",
+      "  " + PARTITIONED + ": " + state(after, PARTITIONED),
+      "  " + PLAIN + ":       " + state(after, PLAIN),
+      "",
+      "raw document.cookie: " + JSON.stringify(document.cookie)
+    ].join("\n");
+
+    var verdict = document.getElementById("verdict");
+    if (!inIframe) {
+      verdict.className = "verdict warn";
+      verdict.textContent = "Load this inside a cross-site iframe -- first-party proves nothing.";
+    } else if (before[PARTITIONED] && before[PLAIN]) {
+      verdict.className = "verdict warn";
+      verdict.textContent = "Third-party cookies are allowed outright, so this tells us nothing about CHIPS.";
+    } else if (before[PARTITIONED]) {
+      verdict.className = "verdict good";
+      verdict.textContent = "CHIPS WORKS: the partitioned cookie persisted, the unpartitioned one did not.";
+    } else if (Object.keys(before).length === 0) {
+      verdict.className = "verdict bad";
+      verdict.textContent = "Nothing persisted. Reload once -- the first load only writes; the second reveals what was kept.";
+    } else {
+      verdict.className = "verdict bad";
+      verdict.textContent = "The partitioned cookie did NOT persist in this browser.";
+    }
+
+    document.getElementById("reload").onclick = function () { location.reload(); };
+  </script>
+</body>
+
+</html>
