@@ -1,114 +1,593 @@
-<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  .embedded-iframe {
-    min-height: 400px;
-    height: 70vh;
-  }
-  @media (max-width: 768px) {
-    .container-fluid {
-      padding: 0 1rem;
-    }
-  }
-</style>
-
+<!DOCTYPE html>
 <html lang="en">
-  <body>
-    <div class="container-fluid">
-      <nav style="justify-content: center;">
-        <ul>
-          <li><strong>AlfonsoV App</strong></li>
-        </ul>
-      </nav>
-    </div>
-    <main class="container-fluid" id="app">
-      <div class="grid">
-          <div>
-            <div>
-              <label for="embeddedLink">Embedded Sign-In Link:</label>
-            </div>
-            <input
-              name="embeddedLink"
-              id="embeddedLink"
-              placeholder="https://embedded.workbright.com/sign_in_with_token?token="
-              ref="iframeLink"
-              v-on:keyup.enter="onEnter"
-              :aria-invalid="invalidInput"
-              />
-            <button @click="btnSubmit" :aria-busy="btnBusy" aria-label="Please wait…" style="background-color: rgb(135, 39, 68); border-color: rgb(135, 39, 68);">Submit</button>
-          </article>
-          </div>
 
-          <component>
-            <p style="margin: 0;">iFrame Preview:</p>
-            <article style="margin: 0;">
-              <iframe
-                class="embedded-iframe"
-                ref="iframeEl"
-                width="100%"
-                frameBorder="0"
-                allow="geolocation *; camera *"
-                :src="placeholder"
-                title="embedded-demo"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation"></iframe>
-            </article>
-            <article v-if="loading" aria-busy="true"></article>
-          </component>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embeder App · Embedded Preview</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    :root {
+      --brand: #872744;
+      --brand-hover: #6f1f37;
+      --text: #1d1f24;
+      --muted: #6b6f76;
+      --card-bg: #ffffff;
+      --border: #d7d9df;
+      --shadow: 0 1px 2px rgba(17, 20, 26, 0.06), 0 12px 30px -10px rgba(17, 20, 26, 0.22);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+    }
+
+    body {
+      background:
+        radial-gradient(1100px 700px at 82% -8%, rgba(135, 39, 68, 0.14), transparent 60%),
+        radial-gradient(900px 600px at 10% 110%, rgba(135, 39, 68, 0.08), transparent 55%),
+        linear-gradient(160deg, #f5f6f8, #e6e8ec);
+      color: var(--text);
+      min-height: 100vh;
+      padding: clamp(0.75rem, 1.6vw, 1.4rem);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== App header ===== */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: clamp(0.6rem, 1.4vw, 1.1rem);
+      flex-shrink: 0;
+    }
+
+    .app-header h1 {
+      margin: 0;
+      font-size: clamp(1.15rem, 2.5vw, 1.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-mark {
+      width: 1.1rem;
+      height: 1.1rem;
+      border-radius: 5px;
+      background: var(--brand);
+      box-shadow: 0 0 0 4px rgba(135, 39, 68, 0.15);
+      flex-shrink: 0;
+    }
+
+    /* ===== Workspace: control bar on top, phone + messages grouped below ===== */
+    .workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(0.75rem, 1.6vw, 1.1rem);
+    }
+
+    /* Row that holds the phone and the messages panel side-by-side, centered.
+       --device-w drives both the phone width and the matching panel height. */
+    .preview-row {
+      --device-w: clamp(360px, 33vw, 470px);
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(0.75rem, 2vw, 1.5rem);
+    }
+
+    /* ===== Floating control bar (above the phone) ===== */
+    .control-bar {
+      width: min(620px, 100%);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-shrink: 0;
+    }
+
+    .address {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      height: 2.85rem;
+      padding: 0 0.55rem 0 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .address:focus-within {
+      border-color: var(--brand);
+      box-shadow: var(--shadow), 0 0 0 3px rgba(135, 39, 68, 0.18);
+    }
+
+    .address.invalid {
+      border-color: #d93838;
+      box-shadow: var(--shadow), 0 0 0 3px rgba(217, 56, 56, 0.18);
+    }
+
+    .address .lock {
+      color: var(--muted);
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .address input {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 0.9rem;
+      color: var(--text);
+      min-width: 0;
+    }
+
+    .address input::placeholder {
+      color: var(--muted);
+    }
+
+    .go-btn {
+      flex-shrink: 0;
+      border: 0;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .go-btn:hover {
+      background: var(--brand-hover);
+    }
+
+    .go-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .console-toggle {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      height: 2.85rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--card-bg);
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0 1rem;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    .console-toggle.active {
+      color: var(--brand);
+      border-color: var(--brand);
+    }
+
+    .console-toggle .badge {
+      min-width: 1.2rem;
+      height: 1.2rem;
+      padding: 0 0.3rem;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    /* ===== Floating phone ===== */
+    .phone {
+      position: relative;
+      width: var(--device-w);
+      height: auto;
+      aspect-ratio: 390 / 844;
+      max-width: 100%;
+      flex-shrink: 0;
+      background: #11141a;
+      border-radius: 2.2rem;
+      padding: 0.35rem;
+      box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.3),
+        0 26px 50px -14px rgba(17, 20, 26, 0.55),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+    }
+
+    .phone-screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 1.9rem;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .embedded-iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    .blank-page {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--muted);
+      background: radial-gradient(circle at center, #fafafa, #f0f1f3);
+    }
+
+    .blank-page svg {
+      width: 3.25rem;
+      height: 3.25rem;
+      color: var(--border);
+      margin-bottom: 1rem;
+    }
+
+    .blank-page .blank-title {
+      margin: 0 0 0.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .blank-page .blank-sub {
+      margin: 0;
+      font-size: 0.85rem;
+      max-width: 18rem;
+    }
+
+    .progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: var(--brand);
+      animation: load 1s ease-out forwards;
+      z-index: 5;
+    }
+
+    @keyframes load {
+      0% {
+        width: 0;
+        opacity: 1;
+      }
+
+      80% {
+        width: 90%;
+        opacity: 1;
+      }
+
+      100% {
+        width: 100%;
+        opacity: 0;
+      }
+    }
+
+    /* ===== Floating messages panel (beside the phone) ===== */
+    .messages-panel {
+      width: var(--device-w);
+      /* match the phone's height (width × 844/390) so the two cards line up */
+      height: calc(var(--device-w) * 2.164);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .messages-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.7rem 0.95rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .messages-head .title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+    }
+
+    .messages-head .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+    }
+
+    .messages-head button {
+      border: 0;
+      background: transparent;
+      color: var(--brand);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.25rem 0.45rem;
+      border-radius: 6px;
+      line-height: 1;
+    }
+
+    .messages-head button:hover {
+      background: rgba(135, 39, 68, 0.08);
+    }
+
+    .messages-head .close {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .console {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 0.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    /* One JSON message = a log card */
+    .console .msg {
+      position: relative;
+      background: #f7f8fa;
+      border: 1px solid #ebedf1;
+      border-left: 3px solid var(--brand);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem 0.55rem 0.75rem;
+    }
+
+    .console .msg .idx {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.55rem;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--muted);
+      opacity: 0.55;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .console .msg pre.json {
+      margin: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.74rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
+    }
+
+    /* Syntax highlight tokens */
+    .tok-key { color: #872744; font-weight: 600; }
+    .tok-str { color: #1a7f4b; }
+    .tok-num { color: #b25000; }
+    .tok-bool { color: #7048b6; font-weight: 600; }
+    .tok-null { color: #9aa0a6; font-style: italic; }
+    .tok-punc { color: #9aa0a6; }
+
+    .console .empty {
+      margin: auto;
+      padding: 1rem 0.5rem;
+      text-align: center;
+      color: var(--muted);
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
+    /* ===== Responsive: stack messages under the phone ===== */
+    @media (max-width: 820px) {
+      .preview-row {
+        flex-direction: column;
+      }
+
+      .messages-panel {
+        width: 100%;
+        height: auto;
+        max-height: 32vh;
+      }
+
+      .console-toggle .label {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body id="app">
+  <header class="app-header">
+    <span class="brand-mark"></span>
+    <h1>Embeder App</h1>
+  </header>
+
+  <div class="workspace">
+    <!-- Floating control bar (above the phone) -->
+    <div class="control-bar">
+      <div class="address" :class="{ invalid: invalidInput }">
+        <span class="lock">&#128274;</span>
+        <input id="embeddedLink" ref="iframeLink"
+          placeholder="https://embedded.workbright.com/sign_in_with_token?token=" v-on:keyup.enter="onEnter"
+          :aria-invalid="invalidInput" />
+        <button class="go-btn" @click="btnSubmit" :disabled="btnBusy">
+          {{ btnBusy ? 'Loading…' : 'Go' }}
+        </button>
       </div>
-    </main>
-  </body>
-</html>
 
-<script>
-  const { createApp } = Vue
+      <button class="console-toggle" :class="{ active: showConsole }" @click="showConsole = !showConsole">
+        <span class="label">iFrame Messages</span>
+        <span class="badge" v-if="iFrameMessages.length">{{ iFrameMessages.length }}</span>
+      </button>
+    </div>
 
-  createApp({
-    data() {
-      return {
-        placeholder: 'https://checkr.workbright.com/',
-        loading: false,
-        btnBusy: false,
-        invalidInput: null,
-      }
-    },
-    methods: {
-      handleSubmit() {
-        if (!this.$refs.iframeLink.value.length) {
-          this.invalidInput = true
-        } else {
-          this.invalidInput = null
+    <!-- Phone + messages, grouped side-by-side -->
+    <div class="preview-row">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="progress" v-if="loading" :key="loadKey"></div>
+          <iframe v-show="iframeSrc" class="embedded-iframe" ref="iframeEl" allow="geolocation *; camera *"
+            :src="iframeSrc" title="embedded-demo"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-storage-access-by-user-activation"></iframe>
+          <div class="blank-page" v-if="!iframeSrc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"
+              stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M3 9h18" />
+              <circle cx="6" cy="6.5" r="0.4" />
+              <circle cx="8.5" cy="6.5" r="0.4" />
+            </svg>
+            <p class="blank-title">No App embedded yet …</p>
+            <p class="blank-sub">Paste a sign-in link above to preview it here.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages panel, beside the phone -->
+      <aside class="messages-panel" v-if="showConsole">
+        <div class="messages-head">
+          <span class="title">iFrame Messages</span>
+          <div class="actions">
+            <button @click="handleClear">Clear</button>
+            <button class="close" @click="showConsole = false" aria-label="Close">&times;</button>
+          </div>
+        </div>
+        <div class="console">
+          <div class="empty" v-if="iFrameMessages.length === 0">No messages received yet.</div>
+          <div class="msg" v-for="(message, index) in iFrameMessages" :key="index">
+            <span class="idx">#{{ iFrameMessages.length - index }}</span>
+            <pre class="json" v-html="formatMessage(message)"></pre>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue
+
+    createApp({
+      data() {
+        return {
+          iframeSrc: '',
+          loading: false,
+          btnBusy: false,
+          invalidInput: null,
+          iFrameMessages: [],
+          showConsole: true,
+          loadKey: 0
         }
-
-        this.loading = true
-        this.btnBusy = true
-
-        this.placeholder = this.$refs.iframeLink.value
-        setTimeout(() => {
-          this.loading = false
-          this.btnBusy = false
-        }, 1000)
       },
-
-      btnSubmit() {
-        this.handleSubmit()
-      },
-
-      onEnter() {
-        this.handleSubmit()
-     },
-
-     mounted() {
-      if (getEventListeners(window) && Object.entries(getEventListeners(window)).length == 0)
+      mounted() {
         window.addEventListener('message', (event) => {
-          console.log(event.data)
+          this.iFrameMessages.unshift(event.data)
         })
-      }
+      },
+      methods: {
+        handleSubmit() {
+          if (!this.$refs.iframeLink.value.length) {
+            this.invalidInput = true
+            return
+          }
+          this.invalidInput = null
+          this.startLoad()
+          this.iframeSrc = this.$refs.iframeLink.value
+        },
 
-    },
+        startLoad() {
+          this.loading = true
+          this.btnBusy = true
+          this.loadKey++
+          setTimeout(() => {
+            this.loading = false
+            this.btnBusy = false
+          }, 1000)
+        },
 
+        btnSubmit() {
+          this.handleSubmit()
+        },
 
+        onEnter() {
+          this.handleSubmit()
+        },
 
-  }).mount('#app')
-</script>
+        handleClear() {
+          this.iFrameMessages = []
+        },
+
+        // Pretty-print + syntax-highlight an incoming message (JSON object or string)
+        formatMessage(message) {
+          let value = message
+          if (typeof message === 'string') {
+            try {
+              value = JSON.parse(message)
+            } catch (e) {
+              return this.escapeHtml(message)
+            }
+          }
+
+          let json
+          try {
+            json = JSON.stringify(value, null, 2)
+          } catch (e) {
+            return this.escapeHtml(String(message))
+          }
+
+          json = this.escapeHtml(json)
+
+          return json.replace(
+            /("(?:\\.|[^"\\])*"(\s*:)?|\b(?:true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?)/g,
+            (match, _g1, isKey) => {
+              let cls = 'tok-num'
+              if (/^"/.test(match)) {
+                cls = isKey ? 'tok-key' : 'tok-str'
+              } else if (match === 'true' || match === 'false') {
+                cls = 'tok-bool'
+              } else if (match === 'null') {
+                cls = 'tok-null'
+              }
+              return '<span class="' + cls + '">' + match + '</span>'
+            }
+          )
+        },
+
+        escapeHtml(str) {
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+        }
+      },
+    }).mount('#app')
+  </script>
+</body>
+
+</html>
